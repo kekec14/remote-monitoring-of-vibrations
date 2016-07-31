@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<!--// Koda je spisana s pomočjo: -->
+<!--// - http://repo.dmz6.net/mqttexample/index.html -->
+<!--// - Knjižnica za MQTT - JavaScript - http://www.eclipse.org/paho/clients/js/ -->
+<!--// - Plotly.js - knjižnica za izris grafov - https://plot.ly/javascript/ -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta charset="utf-8">
+<meta name="description" content="">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monitoring vibracij - LIVE</title>
+</head>
+<body>
+
+<div id="wrapper">
+<div id="myDiv" style="color: #8b8b8b; background-color:#2a2a2a; width:100%; height:230px;"></div>
+<div id="myDiv2" style="color: #8b8b8b; background-color:#2a2a2a; width:100%; height:200px;"></div>
+<div id="myDiv1" style="width:100%; height:200px;"></div>
+</div>
+
+<!--//uvoz knjižnic, ki so potrebne za delovanje programa -->
+<script src="./MQTT/mqttws31-min.js"></script>
+<script src="./MQTT/jquery-2.0.3.min.js"></script>
+<script src="https://cdn.plot.ly/plotly-1.13.0.min.js"></script>
+
+
+<style type="text/css">
+body {
+	background-color: #101214;
+color: #8b8b8b;
+}
+
+</style>
+
+<script>
+//kreiranje naključnega besedila, ki je potreben za povezavo naročnika z odjemalca - MQTT
+function randomString(length) {
+	var text = "";
+	var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+	for (var i = 0; i < length; i++)
+	text += possible.charAt(Math.floor(Math.random() * possible.length));
+	return text;
+}
+
+function mylogger(message) {
+	console.log(new Date() + " " + message);
+}
+
+// Definiranje vektorjev
+var v_y = []
+var v_z = []
+var graphMaxPoints = 9; // maksimalno število 
+var j = 0
+var v_celotni = []
+
+
+// Povezava z posrednikom 
+var mqttSrv='192.168.0.113';
+var mqttPort=8000;
+var mqttClientID='client-' + randomString(4);
+var mqttSubTopic='DP/obdelava';
+
+client = new Paho.MQTT.Client(mqttSrv, mqttPort, mqttClientID);
+
+// set callback handlers
+client.onConnectionLost = onConnectionLost;
+client.onMessageArrived = onMessageArrived;
+
+// Povezava naročnika
+client.connect({onSuccess:onConnect});
+
+
+// Funkcija, k ise aktivira, ko je povezava z ojemalcem vzpostavljena
+function onConnect() {
+	// Once a connection has been made, make a subscription and send a message.
+	mylogger("onConnect");
+	var subscribeOptions = {
+		qos: 1 //definiranje kakovosti sprejema QoS
+	};
+	client.subscribe(mqttSubTopic, subscribeOptions);
+}
+
+// Funkcija, ki se aktivira v primeru izgube povezave z odjeamlcem
+function onConnectionLost(responseObject) {
+	if (responseObject.errorCode !== 0) {
+		mylogger("onConnectionLost:"+responseObject.errorMessage);
+	}
+}
+
+// Funkcija, ki se aktivira ko prispe sporočilo v temo, na katero smo naročeni
+function onMessageArrived(message){
+	var x = message.payloadString;
+	var v_celotni = JSON.parse(x) // pretvarjanje besedila sporočila v številke in zapis v vektor v_celotni
+	//v primeru, da je vektor v_z predolg se najstarejše vrednosti izbrišejo
+	if (v_z.length > graphMaxPoints) {
+		v_z.shift();
+	}
+	if (v_y.length > graphMaxPoints) {
+		v_y.shift();
+	}
+	v_z.push(v_celotni[1]);
+	v_y.push(v_celotni[3][0]);
+	
+	//spectrogram
+	var data = [
+	{
+		z: v_z, //spektralna gostota moči
+		x: v_celotni[0], //frekvence
+		y: v_y, //čas zajema
+		
+
+		colorscale: [["0", "rgb(250, 250, 250)"], ["0.0001", "rgb(200, 200, 200)"], ["0.001", "rgb(150, 150, 150)"], ["0.01", "rgb(100, 100, 100)"], ["0.1", "rgb(50, 50, 50)"], ["1.0", "rgb(0, 0, 0)"]], 
+		type: 'heatmap'
+		
+	}
+	];
+	
+	var layout = {
+		title: 'Spektrogram',
+		xaxis: {title: "Frekvenca [Hz]"},
+		yaxis: {title: "Čas zajema meritve"},
+		margin: {
+			l: 180,
+			r: 50,
+			b: 20,
+			t: 30
+		},
+		paper_bgcolor: '#8f8f8f',
+		plot_bgcolor: '#c7c7c7'
+	};
+
+	Plotly.newPlot('myDiv', data, layout);
+	
+	//časovna vrsta
+	var data1 = [
+	{
+		x: v_celotni[4],
+		y: v_celotni[2],
+		type: 'scatter'
+	}
+	];
+	
+	var layout1 = {
+		title: "Diagram pospeškov v odvisnosti od časa",
+		xaxis: {title: "Čas [s]"},
+		yaxis: {title: "Pospešek [g]"},
+		margin: {
+			l: 180,
+			r: 110,
+			b: 20,
+			t: 30
+		},
+		paper_bgcolor: '#8f8f8f',
+		plot_bgcolor: '#c7c7c7'
+	};
+
+	Plotly.newPlot('myDiv1', data1, layout1);
+	
+	//welch
+	var data2 = [
+	{
+		x: v_celotni[0],
+		y: v_celotni[1],
+		type: 'scatter'
+	}
+	];
+	
+	var layout2 = {
+		title: "Diagram spektralne gostote moči v odvisnosti od frekvence",
+		xaxis: {title: "Frekvenca [Hz]"},
+		margin: {
+			l: 180,
+			r: 110,
+			b: 20,
+			t: 30
+		},
+		yaxis: {
+			type: 'log',
+			title: "PSD - Sxx [g^2/Hz]"
+		},
+		paper_bgcolor: '#7f7f7f',
+		plot_bgcolor: '#c7c7c7'
+	};
+	
+	Plotly.newPlot('myDiv2', data2, layout2);
+		
+	v_celotni=[]
+}
+</script>
+
+</body></html>
