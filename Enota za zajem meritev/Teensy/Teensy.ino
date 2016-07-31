@@ -2,7 +2,7 @@
 
 // Koda je spisana s pomočjo že napisanih knjižnic in zgledov:
 // http://learn.adafruit.com/fft-fun-with-fourier-transforms/
-// sdFat - zgled: dataLogger
+// sdFat - zgled: dataLogger - https://github.com/greiman/SdFat/blob/master/SdFat/examples/LowLatencyLogger/LowLatencyLogger.ino
   
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // ZAČETEK PROGRAMA
