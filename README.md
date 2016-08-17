@@ -6,11 +6,11 @@ List of used components:
 - Wi-Fi modul [Wemos D1 mini](http://www.wemos.cc/Products/d1_mini.html)
 - accelerometer [ADXL 335](https://www.sparkfun.com/products/9269)
 - LCD screen
-- 2x button
+- button
 - ON/OFF switch
 - LED
 - 10 kOhm potentiometer
-- 2x 220 Ohm resistor
-- 2x 10 kOhm resistor
+- 220 Ohm resistor
+- 10 kOhm resistor
 - [3.7V Li-ion Battery Power Supply Module](http://www.banggood.com/37V-Liion-Battery-Mini-USB-To-USB-A-Power-Apply-Module-p-928948.html)
 - Li-Po battery
